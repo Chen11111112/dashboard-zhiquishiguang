@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-navy: #1b2a4a;
+  --font-sans: var(--font-geist-sans), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+body {
+  color: #1b2a4a;
+  font-family: var(--font-sans);
+  /* 呼應系所門牌的米白＋藍、橘配色 */
+  background:
+    radial-gradient(60rem 40rem at 15% 0%, rgba(120, 190, 225, 0.28), transparent 60%),
+    radial-gradient(50rem 36rem at 55% 100%, rgba(240, 160, 32, 0.16), transparent 60%),
+    #f4f0e7;
+}
