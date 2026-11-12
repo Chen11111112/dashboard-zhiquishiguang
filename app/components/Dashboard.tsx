@@ -16,7 +16,7 @@ import {
 } from "../lib/lockers";
 
 const CABINET_KEYS = Object.keys(CABINETS) as CabinetKey[];
-const CABINET_COLOR: Record<CabinetKey, string> = { campus: "#1b2a4a", food: "#f0a020" };
+const CABINET_COLOR: Record<CabinetKey, string> = { campus: "#754930", food: "#B9DBB0" };
 const fmt = (n: number) => n.toLocaleString("en-US");
 
 function Card({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
@@ -121,7 +121,7 @@ function CabinetCard({ cabinet }: { cabinet: CabinetKey }) {
                   style={{
                     height: `${(stats.history[i] / peak) * 62}%`,
                     background: color,
-                    opacity: current ? 1 : 0.35,
+                    opacity: current ? 1 : 0.45,
                   }}
                 />
                 <span className={`font-mono text-[10px] ${current ? "font-semibold text-navy" : "text-navy/45"}`}>
@@ -149,8 +149,11 @@ export default function Dashboard() {
 
         <header className="pointer-events-none absolute left-6 top-5">
           <div className="text-xs font-medium tracking-[0.2em] text-amber-600">藝402 ・ 資訊管理系</div>
-          <h1 className="mt-1 text-2xl font-bold text-navy">智取櫃使用統計</h1>
-          <div className="mt-0.5 text-sm text-navy/55">智慧數位轉型服務基地</div>
+          <h1 className="mt-1 text-2xl font-bold leading-tight text-navy">
+            商業智慧研究中心
+            <span className="block text-lg font-semibold text-navy/75">智取櫃使用統計</span>
+          </h1>
+          <div className="mt-1 text-sm text-navy/55">智慧數位轉型服務基地</div>
         </header>
 
         <div className="pointer-events-none absolute bottom-5 left-6 right-6 flex flex-wrap items-center justify-between gap-3">
@@ -173,7 +176,6 @@ export default function Dashboard() {
             <div className="text-sm font-semibold text-navy">{CURRENT_SEMESTER.label}</div>
             <div className="text-xs text-navy/50">{CURRENT_SEMESTER.range}</div>
           </div>
-          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-700">示範數據</span>
         </div>
 
         <TotalCard />
@@ -222,8 +224,11 @@ export default function Dashboard() {
           {selected ? (
             <div className="flex gap-4">
               <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl font-mono text-3xl font-bold text-white"
-                style={{ background: CABINET_COLOR[selected.cabinet] }}
+                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl font-mono text-3xl font-bold"
+                style={{
+                  background: CABINET_COLOR[selected.cabinet],
+                  color: selected.cabinet === "food" ? "#1b2a4a" : "#fff",
+                }}
               >
                 {selected.letter}
               </div>

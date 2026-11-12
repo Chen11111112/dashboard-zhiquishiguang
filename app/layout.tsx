@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "智取櫃使用統計",
+  title: "商業智慧研究中心｜智取櫃使用統計",
   description: "校園智取櫃・智取食光 3D 儀表板",
 };
 
