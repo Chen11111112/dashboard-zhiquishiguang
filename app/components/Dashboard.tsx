@@ -6,9 +6,11 @@ import {
   CABINETS,
   CABINET_STATS,
   CURRENT_SEMESTER,
+  FOOD_PRODUCT_COUNT,
   LOCKERS,
   SEMESTERS,
   STATUS_META,
+  TOTAL_STATS,
   type CabinetKey,
   type LockerStatus,
 } from "../lib/lockers";
@@ -29,7 +31,17 @@ function Card({ title, children, aside }: { title: string; children: React.React
   );
 }
 
-function Stat({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
+function Stat({
+  label,
+  value,
+  strong,
+  unit = "次",
+}: {
+  label: string;
+  value: number;
+  strong?: boolean;
+  unit?: string;
+}) {
   return (
     <div>
       <div className="text-xs text-navy/55">{label}</div>
@@ -39,9 +51,44 @@ function Stat({ label, value, strong }: { label: string; value: number; strong?:
         >
           {fmt(value)}
         </span>
-        <span className="text-xs text-navy/50">次</span>
+        <span className="text-xs text-navy/50">{unit}</span>
       </div>
     </div>
+  );
+}
+
+/** 智取櫃合計：兩座櫃子個別統計後加總 */
+function TotalCard() {
+  const rows = [
+    { label: "本學期使用", total: TOTAL_STATS.semesterCount, pick: (k: CabinetKey) => CABINET_STATS[k].semesterCount },
+    { label: "歷史累計", total: TOTAL_STATS.totalCount, pick: (k: CabinetKey) => CABINET_STATS[k].totalCount },
+  ];
+  return (
+    <section className="shrink-0 rounded-2xl bg-navy p-4 text-white">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-base font-bold">智取櫃</h2>
+        <span className="text-xs text-white/55">校園智取櫃 ＋ 智取食光</span>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-4">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <div className="text-xs text-white/60">{row.label}</div>
+            <div className="mt-0.5 flex items-baseline gap-1">
+              <span className="font-mono text-3xl font-semibold tabular-nums">{fmt(row.total)}</span>
+              <span className="text-xs text-white/55">次</span>
+            </div>
+            <div className="mt-2 flex h-1.5 gap-0.5 overflow-hidden rounded-full">
+              <div className="bg-white/45" style={{ flexGrow: row.pick("campus") }} />
+              <div style={{ flexGrow: row.pick("food"), background: CABINET_COLOR.food }} />
+            </div>
+            <div className="mt-1 flex justify-between font-mono text-[10px] tabular-nums text-white/60">
+              <span>{fmt(row.pick("campus"))}</span>
+              <span>{fmt(row.pick("food"))}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -58,9 +105,10 @@ function CabinetCard({ cabinet }: { cabinet: CabinetKey }) {
           <h2 className="text-base font-bold text-navy">{CABINETS[cabinet].name}</h2>
           <span className="text-xs text-navy/45">{CABINETS[cabinet].note}</span>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <Stat label="本學期使用" value={stats.semesterCount} strong />
+        <div className={`mt-3 grid gap-3 ${cabinet === "food" ? "grid-cols-3" : "grid-cols-2"}`}>
+          <Stat label="本學期使用" value={stats.semesterCount} strong={cabinet !== "food"} />
           <Stat label="歷史累計" value={stats.totalCount} />
+          {cabinet === "food" && <Stat label="商品數量" value={FOOD_PRODUCT_COUNT} unit="項" />}
         </div>
         <div className="mt-4 flex h-20 items-end gap-2">
           {SEMESTERS.map((sem, i) => {
@@ -127,6 +175,8 @@ export default function Dashboard() {
           </div>
           <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-medium text-amber-700">示範數據</span>
         </div>
+
+        <TotalCard />
 
         {CABINET_KEYS.map((key) => (
           <CabinetCard key={key} cabinet={key} />

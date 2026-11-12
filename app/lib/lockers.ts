@@ -147,3 +147,12 @@ export const CABINET_STATS: Record<CabinetKey, CabinetStats> = {
   campus: buildStats("campus"),
   food: buildStats("food"),
 };
+
+/** 智取食光上架的商品數量 */
+export const FOOD_PRODUCT_COUNT = 1346;
+
+/** 智取櫃合計 = 校園智取櫃 + 智取食光 */
+export const TOTAL_STATS = {
+  semesterCount: CABINET_STATS.campus.semesterCount + CABINET_STATS.food.semesterCount,
+  totalCount: CABINET_STATS.campus.totalCount + CABINET_STATS.food.totalCount,
+};
