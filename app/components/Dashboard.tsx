@@ -5,13 +5,13 @@ import LockerScene from "./LockerScene";
 import {
   CABINETS,
   CABINET_STATS,
-  CURRENT_SEMESTER,
   FOOD_PRODUCT_COUNT,
   FOOD_PRODUCT_SINCE,
   LOCKERS,
   SEMESTERS,
   STATUS_META,
   TOTAL_STATS,
+  WEEKS,
   type CabinetKey,
   type LockerStatus,
 } from "../lib/lockers";
@@ -33,108 +33,157 @@ function Card({ title, children, aside }: { title: string; children: React.React
   );
 }
 
-function Stat({
-  label,
-  value,
-  strong,
-  unit = "次",
-}: {
-  label: string;
-  value: number;
-  strong?: boolean;
-  unit?: string;
-}) {
+function Legend() {
   return (
-    <div>
-      <div className="text-xs text-navy/55">{label}</div>
-      <div className="mt-0.5 flex items-baseline gap-1">
-        <span
-          className={`font-mono font-semibold tabular-nums text-navy ${strong ? "text-[28px] leading-9" : "text-2xl text-navy/75"}`}
-        >
-          {fmt(value)}
-        </span>
-        <span className="text-xs text-navy/50">{unit}</span>
-      </div>
+    <ul className="flex gap-3 text-[11px] text-navy/60">
+      {CABINET_KEYS.map((k) => (
+        <li key={k} className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-sm" style={{ background: CABINET_COLOR[k] }} />
+          {CABINETS[k].name}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** 長條圖：各學期使用次數（兩座櫃子堆疊） */
+function SemesterBars() {
+  const totals = SEMESTERS.map((_, i) => CABINET_STATS.campus.history[i] + CABINET_STATS.food.history[i]);
+  const peak = Math.max(...totals);
+  return (
+    <div className="flex h-32 items-end gap-2">
+      {SEMESTERS.map((sem, i) => {
+        const current = i === SEMESTERS.length - 1;
+        return (
+          <div key={sem} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
+            <span className="font-mono text-[10px] tabular-nums text-navy/60">{fmt(totals[i])}</span>
+            <div
+              className="flex w-full flex-col gap-px overflow-hidden rounded-t"
+              style={{ height: `${(totals[i] / peak) * 72}%`, opacity: current ? 1 : 0.55 }}
+            >
+              {CABINET_KEYS.map((k) => (
+                <div
+                  key={k}
+                  title={`${CABINETS[k].name} ${fmt(CABINET_STATS[k].history[i])} 次`}
+                  style={{ flexGrow: CABINET_STATS[k].history[i], background: CABINET_COLOR[k] }}
+                />
+              ))}
+            </div>
+            <span className={`font-mono text-[10px] ${current ? "font-semibold text-navy" : "text-navy/45"}`}>
+              {sem}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-/** 智取櫃合計：兩座櫃子個別統計後加總 */
-function TotalCard() {
-  const rows = [
-    { label: "本學期使用", total: TOTAL_STATS.semesterCount, pick: (k: CabinetKey) => CABINET_STATS[k].semesterCount },
-    { label: "歷史累計", total: TOTAL_STATS.totalCount, pick: (k: CabinetKey) => CABINET_STATS[k].totalCount },
-  ];
+/** 折線圖：本學期每週使用次數 */
+function WeeklyLines() {
+  const W = 340;
+  const H = 140;
+  const pad = { l: 28, r: 8, t: 8, b: 20 };
+  const peak = Math.max(...CABINET_KEYS.flatMap((k) => CABINET_STATS[k].weekly));
+  const top = Math.ceil(peak / 50) * 50;
+  const x = (i: number) => pad.l + (i / (WEEKS.length - 1)) * (W - pad.l - pad.r);
+  const y = (v: number) => pad.t + (1 - v / top) * (H - pad.t - pad.b);
   return (
-    <section className="shrink-0 rounded-2xl bg-navy p-4 text-white">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-base font-bold">智取櫃</h2>
-        <span className="text-xs text-white/55">校園智取櫃 ＋ 智取食光</span>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-4">
-        {rows.map((row) => (
-          <div key={row.label}>
-            <div className="text-xs text-white/60">{row.label}</div>
-            <div className="mt-0.5 flex items-baseline gap-1">
-              <span className="font-mono text-3xl font-semibold tabular-nums">{fmt(row.total)}</span>
-              <span className="text-xs text-white/55">次</span>
-            </div>
-            <div className="mt-2 flex h-1.5 gap-0.5 overflow-hidden rounded-full">
-              <div className="bg-white/45" style={{ flexGrow: row.pick("campus") }} />
-              <div style={{ flexGrow: row.pick("food"), background: CABINET_COLOR.food }} />
-            </div>
-            <div className="mt-1 flex justify-between font-mono text-[10px] tabular-nums text-white/60">
-              <span>{fmt(row.pick("campus"))}</span>
-              <span>{fmt(row.pick("food"))}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="本學期每週使用次數折線圖">
+      {[0, top / 2, top].map((v) => (
+        <g key={v}>
+          <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="#1b2a4a" strokeOpacity={v === 0 ? 0.25 : 0.08} />
+          <text x={pad.l - 6} y={y(v) + 3} textAnchor="end" fontSize="9" fill="#1b2a4a" fillOpacity="0.5">
+            {v}
+          </text>
+        </g>
+      ))}
+      {WEEKS.map((w, i) => (
+        <text key={w} x={x(i)} y={H - 5} textAnchor="middle" fontSize="9" fill="#1b2a4a" fillOpacity="0.5">
+          {w}
+        </text>
+      ))}
+      {CABINET_KEYS.map((k) => {
+        const data = CABINET_STATS[k].weekly;
+        const last = data.length - 1;
+        return (
+          <g key={k}>
+            {/* 最後一週尚未結束，用虛線表示 */}
+            <polyline
+              points={data
+                .slice(0, last)
+                .map((v, i) => `${x(i)},${y(v)}`)
+                .join(" ")}
+              fill="none"
+              stroke={CABINET_COLOR[k]}
+              strokeWidth="2.5"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+            <line
+              x1={x(last - 1)}
+              y1={y(data[last - 1])}
+              x2={x(last)}
+              y2={y(data[last])}
+              stroke={CABINET_COLOR[k]}
+              strokeWidth="2.5"
+              strokeDasharray="4 4"
+            />
+            {data.map((v, i) => (
+              <circle key={i} cx={x(i)} cy={y(v)} r="3" fill="#fff" stroke={CABINET_COLOR[k]} strokeWidth="2">
+                <title>{`第 ${WEEKS[i]} 週 ${CABINETS[k].name} ${v} 次`}</title>
+              </circle>
+            ))}
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
-/** 合併卡片中的單一櫃體區塊：本學期＋歷史累計＋各學期長條 */
-function CabinetCard({ cabinet }: { cabinet: CabinetKey }) {
-  const stats = CABINET_STATS[cabinet];
-  const color = CABINET_COLOR[cabinet];
-  const peak = Math.max(...stats.history);
+/** 圓餅圖：歷史累計中兩座櫃子的佔比 */
+function ShareDonut() {
+  const r = 38;
+  const c = 2 * Math.PI * r;
+  const total = TOTAL_STATS.totalCount;
+  const segments = CABINET_KEYS.map((k) => ({ k, value: CABINET_STATS[k].totalCount }));
   return (
-    <div className="p-4">
-      <div>
-        <div className="flex items-baseline justify-between">
-          <h2 className="flex items-center gap-2 text-base font-bold text-navy">
-            <span className="h-3 w-3 rounded-sm" style={{ background: color }} />
-            {CABINETS[cabinet].name}
-          </h2>
-          <span className="text-xs text-navy/45">{CABINETS[cabinet].note}</span>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <Stat label="本學期使用" value={stats.semesterCount} strong />
-          <Stat label="歷史累計" value={stats.totalCount} strong={cabinet === "food"} />
-        </div>
-        <div className="mt-4 flex h-20 items-end gap-2">
-          {SEMESTERS.map((sem, i) => {
-            const current = i === SEMESTERS.length - 1;
-            return (
-              <div key={sem} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                <span className="font-mono text-[10px] tabular-nums text-navy/60">{fmt(stats.history[i])}</span>
-                <div
-                  className="w-full rounded-t"
-                  style={{
-                    height: `${(stats.history[i] / peak) * 62}%`,
-                    background: color,
-                    opacity: current ? 1 : 0.45,
-                  }}
-                />
-                <span className={`font-mono text-[10px] ${current ? "font-semibold text-navy" : "text-navy/45"}`}>
-                  {sem}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div className="flex items-center gap-5">
+      <svg viewBox="0 0 100 100" className="h-28 w-28 shrink-0 -rotate-90" role="img" aria-label="歷史累計佔比圓餅圖">
+        {segments.map((seg, i) => {
+          const len = (seg.value / total) * c;
+          const offset = segments.slice(0, i).reduce((a, s) => a + (s.value / total) * c, 0);
+          return (
+            <circle
+              key={seg.k}
+              cx="50"
+              cy="50"
+              r={r}
+              fill="none"
+              stroke={CABINET_COLOR[seg.k]}
+              strokeWidth="18"
+              strokeDasharray={`${Math.max(len - 1.5, 0)} ${c}`}
+              strokeDashoffset={-offset}
+            />
+          );
+        })}
+      </svg>
+      <ul className="flex-1 space-y-3">
+        {segments.map((seg) => (
+          <li key={seg.k}>
+            <div className="flex items-center gap-1.5 text-xs text-navy/60">
+              <span className="h-2 w-2 rounded-sm" style={{ background: CABINET_COLOR[seg.k] }} />
+              {CABINETS[seg.k].name}
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-xl font-semibold tabular-nums text-navy">
+                {Math.round((seg.value / total) * 100)}%
+              </span>
+              <span className="font-mono text-xs tabular-nums text-navy/50">{fmt(seg.value)} 次</span>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -142,7 +191,6 @@ function CabinetCard({ cabinet }: { cabinet: CabinetKey }) {
 export default function Dashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = LOCKERS.find((l) => l.id === selectedId) ?? null;
-  const monthPeak = Math.max(...CABINET_KEYS.flatMap((k) => CABINET_STATS[k].monthly.map((m) => m.count)));
 
   return (
     <div className="flex h-dvh flex-col lg:flex-row">
@@ -174,21 +222,34 @@ export default function Dashboard() {
 
       {/* 右：歷史數據 */}
       <aside className="flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-navy/10 bg-white/40 p-4 lg:w-[400px] lg:border-l">
-        <div className="flex items-start justify-between px-1">
-          <div>
-            <div className="text-sm font-semibold text-navy">{CURRENT_SEMESTER.label}</div>
-            <div className="text-xs text-navy/50">{CURRENT_SEMESTER.range}</div>
+        <div className="px-1 text-sm font-semibold text-navy">統計數據</div>
+
+        <Card title="智取櫃使用率" aside={<Legend />}>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "本學期使用", value: TOTAL_STATS.semesterCount },
+              { label: "歷史累計", value: TOTAL_STATS.totalCount },
+            ].map((s) => (
+              <div key={s.label}>
+                <div className="text-xs text-navy/55">{s.label}</div>
+                <div className="mt-0.5 flex items-baseline gap-1">
+                  <span className="font-mono text-4xl font-semibold tabular-nums text-navy">{fmt(s.value)}</span>
+                  <span className="text-xs text-navy/50">次</span>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+          <div className="mt-4 text-xs text-navy/50">各學期使用次數</div>
+          <SemesterBars />
+        </Card>
 
-        <TotalCard />
+        <Card title="本學期每週使用次數" aside={<span className="text-[11px] text-navy/45">週次</span>}>
+          <WeeklyLines />
+        </Card>
 
-        <section className="shrink-0 divide-y divide-navy/10 rounded-2xl border border-navy/10 bg-white/80">
-          <h2 className="px-4 py-3 text-[13px] font-semibold tracking-wider text-navy/60">智取櫃使用率</h2>
-          {CABINET_KEYS.map((key) => (
-            <CabinetCard key={key} cabinet={key} />
-          ))}
-        </section>
+        <Card title="歷史累計佔比">
+          <ShareDonut />
+        </Card>
 
         <section className="shrink-0 overflow-hidden rounded-2xl border border-navy/10 bg-white/80">
           <div className="h-1" style={{ background: CABINET_COLOR.food }} />
@@ -205,42 +266,6 @@ export default function Dashboard() {
             <div className="pb-1 text-right text-xs text-navy/50">{FOOD_PRODUCT_SINCE}起累積</div>
           </div>
         </section>
-
-        <Card
-          title="本學期每月使用次數"
-          aside={
-            <ul className="flex gap-3 text-[11px] text-navy/60">
-              {CABINET_KEYS.map((k) => (
-                <li key={k} className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-sm" style={{ background: CABINET_COLOR[k] }} />
-                  {CABINETS[k].name}
-                </li>
-              ))}
-            </ul>
-          }
-        >
-          <div className="flex h-28 items-end gap-4">
-            {CABINET_STATS.campus.monthly.map((m, i) => (
-              <div key={m.month} className="flex h-full flex-1 flex-col justify-end gap-1">
-                <div className="flex flex-1 items-end gap-1">
-                  {CABINET_KEYS.map((k) => {
-                    const count = CABINET_STATS[k].monthly[i].count;
-                    return (
-                      <div key={k} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
-                        <span className="font-mono text-[10px] tabular-nums text-navy/60">{fmt(count)}</span>
-                        <div
-                          className="w-full rounded-t"
-                          style={{ height: `${(count / monthPeak) * 80}%`, background: CABINET_COLOR[k] }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-                <span className="text-center text-[11px] text-navy/50">{m.month}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
 
         <Card title="選取的格子">
           {selected ? (

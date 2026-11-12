@@ -115,32 +115,25 @@ export interface CabinetStats {
   totalCount: number;
   /** 各學期使用次數，順序同 SEMESTERS */
   history: number[];
-  /** 本學期各月使用次數 */
-  monthly: { month: string; count: number }[];
+  /** 本學期各週使用次數，順序同 WEEKS */
+  weekly: number[];
 }
 
-const MONTH_SHARE = [
-  { month: "9月", share: 0.33 },
-  { month: "10月", share: 0.45 },
-  { month: "11月", share: 0.22 }, // 只到 11/12
-];
+/** 本學期週次（第 10 週只到 11/12） */
+export const WEEKS = Array.from({ length: 10 }, (_, i) => i + 1);
+
+const WEEK_SHARE: Record<CabinetKey, number[]> = {
+  campus: [0.07, 0.1, 0.1, 0.11, 0.12, 0.1, 0.12, 0.11, 0.11],
+  food: [0.06, 0.09, 0.11, 0.12, 0.11, 0.12, 0.1, 0.12, 0.11],
+};
 
 function buildStats(cabinet: CabinetKey): CabinetStats {
   const list = LOCKERS.filter((l) => l.cabinet === cabinet);
   const history = SEMESTERS.map((_, i) => list.reduce((a, l) => a + l.history[i], 0));
   const semesterCount = history[history.length - 1];
-  const sept = Math.round(semesterCount * MONTH_SHARE[0].share);
-  const oct = Math.round(semesterCount * MONTH_SHARE[1].share);
-  return {
-    semesterCount,
-    totalCount: history.reduce((a, b) => a + b, 0),
-    history,
-    monthly: [
-      { month: "9月", count: sept },
-      { month: "10月", count: oct },
-      { month: "11月", count: semesterCount - sept - oct },
-    ],
-  };
+  const weekly = WEEK_SHARE[cabinet].map((share) => Math.round(semesterCount * share));
+  weekly.push(semesterCount - weekly.reduce((a, b) => a + b, 0)); // 最後一週補足總數
+  return { semesterCount, totalCount: history.reduce((a, b) => a + b, 0), history, weekly };
 }
 
 export const CABINET_STATS: Record<CabinetKey, CabinetStats> = {

@@ -353,9 +353,106 @@ export default function LockerScene({
     el.addEventListener("pointerdown", onDown);
     el.addEventListener("pointerup", onUp);
 
+    // 路人：時不時從櫃子前面走過
+    const limbGeo = new THREE.CapsuleGeometry(0.055, 0.5, 4, 8).translate(0, -0.305, 0);
+    const armGeo = new THREE.CapsuleGeometry(0.045, 0.42, 4, 8).translate(0, -0.255, 0);
+    const torsoGeo = new THREE.CapsuleGeometry(0.15, 0.38, 4, 12);
+    const headGeo = new THREE.SphereGeometry(0.115, 16, 12);
+    const hairGeo = new THREE.SphereGeometry(0.122, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
+    const bagGeo = new THREE.BoxGeometry(0.24, 0.3, 0.12);
+    const SHIRTS = [0x4f7cac, 0xd98a5f, 0x6b9e78, 0xc9b458, 0x8c6bb1, 0xf1ede3, 0x3d4a5c, 0xc8565b];
+    const PANTS = [0x2f3b52, 0x4a4a4a, 0x6b5b4b, 0x8a8f98];
+    const SKINS = [0xe6bf9f, 0xd9a880, 0xf0cdb0];
+    const HAIRS = [0x1f1a17, 0x3a2a20, 0x2b2b2b];
+    const pickOne = (list: number[]) => list[Math.floor(Math.random() * list.length)];
+    const WALK_END = 5.5;
+
+    interface Walker {
+      group: THREE.Group;
+      legs: THREE.Mesh[];
+      arms: THREE.Mesh[];
+      materials: THREE.Material[];
+      dir: number;
+      speed: number;
+      phase: number;
+      height: number;
+    }
+    const walkers: Walker[] = [];
+
+    const spawnWalker = () => {
+      const mat = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
+      const shirt = mat(pickOne(SHIRTS));
+      const pants = mat(pickOne(PANTS));
+      const skin = mat(pickOne(SKINS));
+      const hair = mat(pickOne(HAIRS));
+      const materials: THREE.Material[] = [shirt, pants, skin, hair];
+      const part = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z = 0) => {
+        const mesh = new THREE.Mesh(geo, m);
+        mesh.position.set(x, y, z);
+        mesh.castShadow = true;
+        return mesh;
+      };
+      // 區域座標：+z 為前進方向
+      const group = new THREE.Group();
+      const legs = [part(limbGeo, pants, -0.08, 0.63), part(limbGeo, pants, 0.08, 0.63)];
+      const arms = [part(armGeo, shirt, -0.2, 1.22), part(armGeo, shirt, 0.2, 1.22)];
+      group.add(...legs, ...arms, part(torsoGeo, shirt, 0, 0.97), part(headGeo, skin, 0, 1.44));
+      group.add(part(hairGeo, hair, 0, 1.45, -0.01));
+      if (Math.random() < 0.6) {
+        const bag = mat(pickOne(PANTS));
+        materials.push(bag);
+        group.add(part(bagGeo, bag, 0, 1.02, -0.2));
+      }
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      group.rotation.y = (dir * Math.PI) / 2;
+      group.position.set(-dir * WALK_END, 0, 0.85 + Math.random() * 0.7);
+      scene.add(group);
+      walkers.push({
+        group,
+        legs,
+        arms,
+        materials,
+        dir,
+        speed: 0.85 + Math.random() * 0.5,
+        phase: Math.random() * Math.PI * 2,
+        height: 0.96 + Math.random() * 0.14,
+      });
+    };
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const clock = new THREE.Clock();
+    let spawnIn = 1.5;
+
     let raf = 0;
     const tick = () => {
       raf = requestAnimationFrame(tick);
+      const dt = Math.min(clock.getDelta(), 0.1);
+      if (!reducedMotion) {
+        spawnIn -= dt;
+        if (spawnIn <= 0 && walkers.length < 3) {
+          spawnWalker();
+          spawnIn = 4 + Math.random() * 8;
+        }
+      }
+      for (let i = walkers.length - 1; i >= 0; i--) {
+        const w = walkers[i];
+        w.group.position.x += w.dir * w.speed * dt;
+        w.phase += dt * w.speed * 5.2;
+        const swing = Math.sin(w.phase) * 0.55;
+        w.legs[0].rotation.x = swing;
+        w.legs[1].rotation.x = -swing;
+        w.arms[0].rotation.x = -swing * 0.7;
+        w.arms[1].rotation.x = swing * 0.7;
+        w.group.position.y = Math.abs(Math.sin(w.phase)) * 0.015;
+        // 在兩端淡入淡出，避免突然出現
+        const edge = THREE.MathUtils.clamp((WALK_END - Math.abs(w.group.position.x)) / 0.6, 0.001, 1);
+        w.group.scale.setScalar(w.height * edge);
+        if (w.group.position.x * w.dir > WALK_END) {
+          scene.remove(w.group);
+          w.materials.forEach((m) => m.dispose());
+          walkers.splice(i, 1);
+        }
+      }
       const selected = selectedRef.current;
       for (const d of doors) {
         const isSel = d.id === selected;
@@ -376,6 +473,7 @@ export default function LockerScene({
       el.removeEventListener("pointerdown", onDown);
       el.removeEventListener("pointerup", onUp);
       controls.dispose();
+      for (const g of [limbGeo, armGeo, torsoGeo, headGeo, hairGeo, bagGeo]) g.dispose();
       scene.traverse((o) => {
         if (o instanceof THREE.Mesh) {
           o.geometry.dispose();
