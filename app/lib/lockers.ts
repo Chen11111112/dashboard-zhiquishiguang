@@ -148,8 +148,9 @@ export const CABINET_STATS: Record<CabinetKey, CabinetStats> = {
   food: buildStats("food"),
 };
 
-/** 智取食光上架的商品數量 */
+/** 智取食光累積商品件數 */
 export const FOOD_PRODUCT_COUNT = 1346;
+export const FOOD_PRODUCT_SINCE = "114 年 12 月";
 
 /** 智取櫃合計 = 校園智取櫃 + 智取食光 */
 export const TOTAL_STATS = {

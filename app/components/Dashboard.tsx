@@ -7,6 +7,7 @@ import {
   CABINET_STATS,
   CURRENT_SEMESTER,
   FOOD_PRODUCT_COUNT,
+  FOOD_PRODUCT_SINCE,
   LOCKERS,
   SEMESTERS,
   STATUS_META,
@@ -93,23 +94,24 @@ function TotalCard() {
   );
 }
 
-/** 單一櫃體：本學期＋歷史累計＋各學期長條 */
+/** 合併卡片中的單一櫃體區塊：本學期＋歷史累計＋各學期長條 */
 function CabinetCard({ cabinet }: { cabinet: CabinetKey }) {
   const stats = CABINET_STATS[cabinet];
   const color = CABINET_COLOR[cabinet];
   const peak = Math.max(...stats.history);
   return (
-    <section className="shrink-0 overflow-hidden rounded-2xl border border-navy/10 bg-white/80">
-      <div className="h-1" style={{ background: color }} />
-      <div className="p-4">
+    <div className="p-4">
+      <div>
         <div className="flex items-baseline justify-between">
-          <h2 className="text-base font-bold text-navy">{CABINETS[cabinet].name}</h2>
+          <h2 className="flex items-center gap-2 text-base font-bold text-navy">
+            <span className="h-3 w-3 rounded-sm" style={{ background: color }} />
+            {CABINETS[cabinet].name}
+          </h2>
           <span className="text-xs text-navy/45">{CABINETS[cabinet].note}</span>
         </div>
-        <div className={`mt-3 grid ${cabinet === "food" ? "grid-cols-3 gap-2" : "grid-cols-2 gap-3"}`}>
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <Stat label="本學期使用" value={stats.semesterCount} strong />
           <Stat label="歷史累計" value={stats.totalCount} strong={cabinet === "food"} />
-          {cabinet === "food" && <Stat label="商品數量" value={FOOD_PRODUCT_COUNT} unit="項" strong />}
         </div>
         <div className="mt-4 flex h-20 items-end gap-2">
           {SEMESTERS.map((sem, i) => {
@@ -133,7 +135,7 @@ function CabinetCard({ cabinet }: { cabinet: CabinetKey }) {
           })}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -181,9 +183,28 @@ export default function Dashboard() {
 
         <TotalCard />
 
-        {CABINET_KEYS.map((key) => (
-          <CabinetCard key={key} cabinet={key} />
-        ))}
+        <section className="shrink-0 divide-y divide-navy/10 rounded-2xl border border-navy/10 bg-white/80">
+          <h2 className="px-4 py-3 text-[13px] font-semibold tracking-wider text-navy/60">智取櫃使用率</h2>
+          {CABINET_KEYS.map((key) => (
+            <CabinetCard key={key} cabinet={key} />
+          ))}
+        </section>
+
+        <section className="shrink-0 overflow-hidden rounded-2xl border border-navy/10 bg-white/80">
+          <div className="h-1" style={{ background: CABINET_COLOR.food }} />
+          <div className="flex items-end justify-between gap-3 p-4">
+            <div>
+              <h2 className="text-[13px] font-semibold tracking-wider text-navy/60">智取食光商品累積</h2>
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className="font-mono text-4xl font-semibold tabular-nums text-navy">
+                  {fmt(FOOD_PRODUCT_COUNT)}
+                </span>
+                <span className="text-sm text-navy/55">件</span>
+              </div>
+            </div>
+            <div className="pb-1 text-right text-xs text-navy/50">{FOOD_PRODUCT_SINCE}起累積</div>
+          </div>
+        </section>
 
         <Card
           title="本學期每月使用次數"
